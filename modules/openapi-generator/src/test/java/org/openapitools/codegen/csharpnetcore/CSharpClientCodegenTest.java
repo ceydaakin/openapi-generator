@@ -318,6 +318,41 @@ public class CSharpClientCodegenTest {
     }
 
     @Test
+    public void testInlineEnumInOneOfAndAnyOfUsesUnderlyingType() throws IOException {
+        File output = Files.createTempDirectory("test").toFile().getCanonicalFile();
+        output.deleteOnExit();
+        final OpenAPI openAPI = TestUtils.parseFlattenSpec("src/test/resources/3_1/csharp/issue_24397.yaml");
+        final DefaultGenerator defaultGenerator = new DefaultGenerator();
+        final ClientOptInput clientOptInput = new ClientOptInput();
+        clientOptInput.openAPI(openAPI);
+        CSharpClientCodegen cSharpClientCodegen = new CSharpClientCodegen();
+        cSharpClientCodegen.setLibrary("generichost");
+        cSharpClientCodegen.additionalProperties().put("nullableReferenceTypes", true);
+        cSharpClientCodegen.setOutputDir(output.getAbsolutePath());
+        clientOptInput.config(cSharpClientCodegen);
+        defaultGenerator.opts(clientOptInput);
+
+        Map<String, File> files = defaultGenerator.generate().stream()
+                .collect(Collectors.toMap(File::getPath, Function.identity()));
+
+        // The inline string enum is not generated as a type, so the converter must not reference one.
+        Path oneOf = Paths.get(output.getAbsolutePath(), "src", "Org.OpenAPITools", "Model", "HelloResponseSecondCustomProperty.cs");
+        assertNotNull(files.get(oneOf.toString()));
+        assertFileNotContains(oneOf, "Enum?", "varString.Value");
+        assertFileContains(oneOf,
+                "string? varString = default;",
+                "ClientUtils.TryDeserialize<string?>(ref utf8JsonReaderString, jsonSerializerOptions, out varString);",
+                "return new HelloResponseSecondCustomProperty(varString);");
+
+        Path anyOf = Paths.get(output.getAbsolutePath(), "src", "Org.OpenAPITools", "Model", "HelloResponseAnyOfProperty.cs");
+        assertNotNull(files.get(anyOf.toString()));
+        assertFileNotContains(anyOf, "Enum?", "EnumJsonConverter");
+        assertFileContains(anyOf,
+                "ClientUtils.TryDeserialize<string?>(ref utf8JsonReaderString, jsonSerializerOptions, out varString);",
+                "writer.WriteString(\"anyOfProperty\", helloResponseAnyOfProperty.StringOption.Value);");
+    }
+
+    @Test
     public void testNotEnumConstraintIsEnforced() throws IOException {
         File output = Files.createTempDirectory("test").toFile().getCanonicalFile();
         output.deleteOnExit();

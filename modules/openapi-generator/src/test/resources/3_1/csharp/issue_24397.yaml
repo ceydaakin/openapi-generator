@@ -1,0 +1,29 @@
+openapi: 3.1.2
+info:
+  title: Simple API
+  version: 1.0.0
+paths:
+  /hello:
+    post:
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HelloResponse'
+components:
+  schemas:
+    HelloResponse:
+      type: object
+      properties:
+        secondCustomProperty:
+          oneOf:
+            - type: number
+            - type: string
+              enum: [TEST1, TEST2, TEST3]
+        anyOfProperty:
+          anyOf:
+            - type: number
+            - type: string
+              enum: [TEST1, TEST2, TEST3]

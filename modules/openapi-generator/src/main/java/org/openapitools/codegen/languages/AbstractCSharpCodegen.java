@@ -671,6 +671,7 @@ public abstract class AbstractCSharpCodegen extends DefaultCodegen {
                 if (anyOf != null) {
                     removePropertiesDeclaredInComposedTypes(objs, model, anyOf);
                     for (CodegenProperty property : anyOf) {
+                        patchInlineComposedEnum(enumRefs, property);
                         patchProperty(enumRefs, model, property);
                         property.name = patchPropertyName(model, property, camelize(property.baseType), composedPropertyNames);
                         property.isNullable = true;
@@ -682,6 +683,7 @@ public abstract class AbstractCSharpCodegen extends DefaultCodegen {
                 if (oneOf != null) {
                     removePropertiesDeclaredInComposedTypes(objs, model, oneOf);
                     for (CodegenProperty property : oneOf) {
+                        patchInlineComposedEnum(enumRefs, property);
                         patchProperty(enumRefs, model, property);
                         property.name = patchPropertyName(model, property, camelize(property.baseType), composedPropertyNames);
                         property.isNullable = true;
@@ -927,6 +929,19 @@ public abstract class AbstractCSharpCodegen extends DefaultCodegen {
             if (!originalType.equals(property.datatypeWithEnum)) {
                 property.dataType = property.datatypeWithEnum;
             }
+        }
+    }
+
+    /**
+     * An inline enum inside oneOf/anyOf is not generated as a type, and the model already exposes it
+     * through its underlying type, so treat it as that type everywhere.
+     * https://github.com/OpenAPITools/openapi-generator/issues/24397
+     */
+    private void patchInlineComposedEnum(Map<String, CodegenModel> enumRefs, CodegenProperty property) {
+        if (property.isEnum && !property.isEnumRef && !enumRefs.containsKey(property.dataType)) {
+            property.isEnum = false;
+            property.isInnerEnum = false;
+            property.datatypeWithEnum = property.dataType;
         }
     }
 
