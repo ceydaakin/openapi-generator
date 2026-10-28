@@ -203,6 +203,34 @@ public class ModelUtils {
     }
 
     /**
+     * Return the local '#/components/schemas/{name}' references that point to a schema
+     * which is not defined in the 'components/schemas' section of an openAPI specification.
+     * Deeper JSON pointers (e.g. '#/components/schemas/Pet/properties/id') are not checked.
+     *
+     * @param openAPI specification
+     * @return the sorted list of unresolved references
+     */
+    public static List<String> getUnresolvedSchemaRefs(OpenAPI openAPI) {
+        String prefix = "#/components/schemas/";
+        Map<String, Schema> schemas = getSchemas(openAPI);
+        Set<String> unresolvedRefs = new TreeSet<>();
+        OpenAPISchemaVisitor visitor = (s, t) -> {
+            String ref = s.get$ref();
+            if (ref != null && ref.startsWith(prefix) && ref.indexOf('/', prefix.length()) < 0
+                    && !schemas.containsKey(getSimpleRef(ref))) {
+                unresolvedRefs.add(ref);
+            }
+        };
+
+        visitOpenAPI(openAPI, visitor);
+        List<String> visitedSchemas = new ArrayList<>();
+        for (Schema schema : schemas.values()) {
+            visitSchema(openAPI, schema, null, visitedSchemas, visitor);
+        }
+        return new ArrayList<>(unresolvedRefs);
+    }
+
+    /**
      * Return the list of schemas in the 'components/schemas' used only in a 'application/x-www-form-urlencoded' or 'multipart/form-data' mime time
      *
      * @param openAPI specification

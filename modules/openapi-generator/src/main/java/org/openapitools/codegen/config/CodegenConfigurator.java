@@ -731,6 +731,16 @@ public class CodegenConfigurator {
         // https://github.com/swagger-api/swagger-parser/pull/1374
         //ModelUtils.getOpenApiVersion(specification, inputSpec, authorizationValues);
 
+        // The Swagger 2.0 converter does not report $refs to undefined definitions, so check them here.
+        // Skip refs the parser already reported (it does so for OpenAPI 3.x documents).
+        if (specification != null) {
+            for (String ref : ModelUtils.getUnresolvedSchemaRefs(specification)) {
+                if (validationMessages.stream().noneMatch(msg -> msg.contains(ref))) {
+                    validationMessages.add("schema reference " + ref + " is missing");
+                }
+            }
+        }
+
         // NOTE: We will only expose errors+warnings if there are already errors in the spec.
         if (validationMessages.size() > 0) {
             Set<String> warnings = new HashSet<>();

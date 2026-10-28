@@ -113,6 +113,19 @@ public class ModelUtilsTest {
     }
 
     @Test
+    public void testGetUnresolvedSchemaRefs() {
+        final OpenAPI openAPI = TestUtils.createOpenAPI();
+        openAPI.getComponents().addSchemas("Pet", new ObjectSchema()
+                .addProperty("id", new IntegerSchema())
+                .addProperty("owner", new Schema<>().$ref("#/components/schemas/MissingOwner"))
+                .addProperty("petId", new Schema<>().$ref("#/components/schemas/Pet/properties/id"))
+                .addProperty("self", new Schema<>().$ref("#/components/schemas/Pet")));
+
+        Assert.assertEquals(ModelUtils.getUnresolvedSchemaRefs(openAPI),
+                List.of("#/components/schemas/MissingOwner"));
+    }
+
+    @Test
     public void testSchemasUsedOnlyInFormParam() {
         final OpenAPI openAPI = TestUtils.parseFlattenSpec("src/test/resources/3_0/unusedSchemas.yaml");
         List<String> unusedSchemas = ModelUtils.getSchemasUsedOnlyInFormParam(openAPI);

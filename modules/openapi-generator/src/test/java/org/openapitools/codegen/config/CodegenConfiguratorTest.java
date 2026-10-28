@@ -37,6 +37,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+import static org.testng.Assert.assertEquals;
 import static org.testng.Assert.assertFalse;
 import static org.testng.Assert.assertTrue;
 
@@ -277,5 +278,28 @@ public class CodegenConfiguratorTest {
         // default validateSpec=true is unchanged by this fix: it still fails fast with the
         // existing, structured SpecValidationException rather than the new generic message.
         Assertions.assertThrows(SpecValidationException.class, configurator::toContext);
+    }
+
+    // https://github.com/OpenAPITools/openapi-generator/issues/24832
+    @Test
+    public void shouldFailOnUndefinedSchemaRefInSwagger2Spec() {
+        CodegenConfigurator configurator = new CodegenConfigurator()
+                .setInputSpec("src/test/resources/2_0/issue_24832_undefined_ref.yaml")
+                .setGeneratorName("java");
+        SpecValidationException ex = Assertions.assertThrows(SpecValidationException.class, configurator::toContext);
+        assertTrue(ex.getErrors().contains("schema reference #/components/schemas/DoesNotExist is missing"), ex.getErrors().toString());
+        assertTrue(ex.getErrors().contains("schema reference #/components/schemas/MissingOwner is missing"), ex.getErrors().toString());
+    }
+
+    // https://github.com/OpenAPITools/openapi-generator/issues/24832
+    @Test
+    public void shouldFailOnUndefinedSchemaRefInOas3Spec() {
+        CodegenConfigurator configurator = new CodegenConfigurator()
+                .setInputSpec("src/test/resources/3_0/issue_24832_undefined_ref.yaml")
+                .setGeneratorName("java");
+        SpecValidationException ex = Assertions.assertThrows(SpecValidationException.class, configurator::toContext);
+        // the parser already reports this ref, so it must not be reported a second time
+        assertEquals(ex.getErrors().size(), 1, ex.getErrors().toString());
+        assertTrue(ex.getErrors().iterator().next().contains("#/components/schemas/DoesNotExist"), ex.getErrors().toString());
     }
 }

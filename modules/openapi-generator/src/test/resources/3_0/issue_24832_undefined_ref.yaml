@@ -1,0 +1,16 @@
+openapi: 3.0.3
+info:
+  title: Undefined Schema Reproduction
+  version: '1.0.0'
+paths:
+  /test:
+    post:
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DoesNotExist'
+      responses:
+        '200':
+          description: OK
