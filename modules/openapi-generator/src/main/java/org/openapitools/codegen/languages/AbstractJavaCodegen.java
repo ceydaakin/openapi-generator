@@ -2933,7 +2933,9 @@ public abstract class AbstractJavaCodegen extends DefaultCodegen implements Code
     }
 
     private boolean shouldBeImplicitHeader(CodegenParameter parameter) {
-        return StringUtils.isNotBlank(implicitHeadersRegex) && parameter.baseName.matches(implicitHeadersRegex);
+        // HTTP header names are case-insensitive (RFC 9110, section 5.1)
+        return StringUtils.isNotBlank(implicitHeadersRegex)
+                && Pattern.compile(implicitHeadersRegex, Pattern.CASE_INSENSITIVE).matcher(parameter.baseName).matches();
     }
 
     @Override

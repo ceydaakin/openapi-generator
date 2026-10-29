@@ -28,10 +28,13 @@ import org.mockito.Answers;
 import org.mockito.Mockito;
 import org.openapitools.codegen.CodegenConstants;
 import org.openapitools.codegen.CodegenModel;
+import org.openapitools.codegen.CodegenOperation;
 import org.openapitools.codegen.CodegenParameter;
 import org.openapitools.codegen.CodegenProperty;
 import org.openapitools.codegen.TestUtils;
 import org.openapitools.codegen.languages.AbstractJavaCodegen;
+import org.openapitools.codegen.model.OperationMap;
+import org.openapitools.codegen.model.OperationsMap;
 import org.openapitools.codegen.testutils.ConfigAssert;
 import org.openapitools.codegen.utils.ModelUtils;
 import org.testng.Assert;
@@ -1250,5 +1253,30 @@ public class AbstractJavaCodegenTest {
         assertThat(codegen.getSchemaType(nullSchema)).isEqualTo("Object");
         assertThat(codegen.getTypeDeclaration(nullSchema)).isEqualTo("Object");
         assertThat(codegen.getTypeDeclaration(new ArraySchema().items(nullSchema))).isEqualTo("List<Object>");
+    }
+
+    @Test(description = "implicitHeadersRegex matches header names case-insensitively (issue 25475)")
+    public void implicitHeadersRegexIsCaseInsensitive() {
+        codegen.setImplicitHeadersRegex("x-tenant-.*");
+        CodegenParameter tenant = new CodegenParameter();
+        tenant.baseName = "X-Tenant-Id";
+        tenant.isHeaderParam = true;
+        CodegenParameter other = new CodegenParameter();
+        other.baseName = "X-Request-Id";
+        other.isHeaderParam = true;
+        CodegenOperation op = new CodegenOperation();
+        op.allParams.addAll(List.of(tenant, other));
+        op.headerParams.addAll(List.of(tenant, other));
+        OperationsMap objs = new OperationsMap();
+        objs.setImports(new ArrayList<>());
+        OperationMap operationMap = new OperationMap();
+        operationMap.setOperation(op);
+        objs.setOperation(operationMap);
+
+        codegen.postProcessOperationsWithModels(objs, List.of());
+
+        assertThat(op.implicitHeadersParams).containsExactly(tenant);
+        assertThat(op.allParams).containsExactly(other);
+        assertThat(op.headerParams).containsExactly(other);
     }
 }
