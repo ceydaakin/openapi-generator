@@ -1,5 +1,6 @@
 package org.openapitools.codegen.kotlin;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.swagger.v3.oas.models.Operation;
 import java.io.File;
 import java.io.IOException;
@@ -9,6 +10,8 @@ import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import org.antlr.v4.runtime.CharStreams;
 import org.antlr.v4.runtime.CommonTokenStream;
 import org.antlr.v4.runtime.tree.ParseTree;
@@ -576,6 +579,43 @@ public class KotlinServerCodegenTest {
         assertFileContains(
                 petModel,
                 "visible = false"
+        );
+    }
+
+    @Test(description = "Issue #25524")
+    public void discriminatorWithJackson_isSerializedOnlyOnce() throws Exception {
+        File output = Files.createTempDirectory("test").toFile().getCanonicalFile();
+        output.deleteOnExit();
+
+        KotlinServerCodegen codegen = new KotlinServerCodegen();
+        codegen.setOutputDir(output.getAbsolutePath());
+        codegen.additionalProperties().put(LIBRARY, JAVALIN6);
+
+        new DefaultGenerator().opts(new ClientOptInput()
+                        .openAPI(TestUtils.parseSpec("src/test/resources/3_1/polymorphism-and-discriminator.yaml"))
+                        .config(codegen))
+                .generate();
+
+        Path modelsDir = Paths.get(output.getAbsolutePath(), "src/main/kotlin/org/openapitools/server/models");
+        List<String> sources;
+        try (Stream<Path> files = Files.list(modelsDir)) {
+            sources = files.map(Path::toString).filter(name -> name.endsWith(".kt")).collect(Collectors.toList());
+        }
+        ClassLoader compiled = KotlinTestUtils.buildModule(sources, getClass().getClassLoader());
+        Class<?> huntingSkill = compiled.loadClass("org.openapitools.server.models.Cat$HuntingSkill");
+        Class<?> cat = compiled.loadClass("org.openapitools.server.models.Cat");
+        Object lazy = huntingSkill.getEnumConstants()[1];
+        Object instance = cat.getConstructor(huntingSkill, String.class).newInstance(lazy, "cat");
+
+        String json = new ObjectMapper().writeValueAsString(instance);
+
+        Assert.assertEquals(json.split("\"petType\"", -1).length - 1, 1, json);
+        Assert.assertTrue(json.contains("\"petType\":\"cat\""), json);
+        assertFileContains(
+                modelsDir.resolve("Pet.kt"),
+                "@com.fasterxml.jackson.annotation.JsonIgnoreProperties(",
+                "value = [\"petType\"]",
+                "allowSetters = true"
         );
     }
 
