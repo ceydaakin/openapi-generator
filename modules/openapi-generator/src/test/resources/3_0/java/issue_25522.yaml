@@ -1,0 +1,35 @@
+openapi: 3.0.0
+info:
+  version: 1.0.0
+  title: defaultToEmptyContainer with a shared array schema
+paths:
+  /info:
+    get:
+      operationId: getInfo
+      responses:
+        '200':
+          description: Successful operation
+components:
+  schemas:
+    StringArray:
+      type: array
+      items:
+        type: string
+    RequiredFirst:
+      type: object
+      properties:
+        requiredStrings:
+          $ref: '#/components/schemas/StringArray'
+        optionalStrings:
+          $ref: '#/components/schemas/StringArray'
+      required:
+        - requiredStrings
+    OptionalFirst:
+      type: object
+      properties:
+        optionalStrings:
+          $ref: '#/components/schemas/StringArray'
+        requiredStrings:
+          $ref: '#/components/schemas/StringArray'
+      required:
+        - requiredStrings

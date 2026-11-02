@@ -4382,14 +4382,24 @@ public class DefaultCodegen implements CodegenConfig {
             }
         }
 
-        // override defaultValue if it's not set and defaultToEmptyContainer is set
+        // override defaultValue if it's not set and defaultToEmptyContainer is set.
+        // `p` can be a schema shared by several properties (e.g. a $ref'ed array component),
+        // so the empty default is only kept while computing this property's default value.
+        boolean emptyContainerDefaultApplied = false;
+        boolean defaultSetFlag = p.getDefaultSetFlag();
         if (p.getDefault() == null && defaultToEmptyContainer) {
             updateDefaultToEmptyContainer(property, p);
+            emptyContainerDefaultApplied = p.getDefault() != null;
         }
 
         // set the default value
         property.defaultValue = toDefaultValue(property, p);
         property.defaultValueWithParam = toDefaultValueWithParam(name, p);
+
+        if (emptyContainerDefaultApplied) {
+            p.setDefault(null);
+            p.setDefaultSetFlag(defaultSetFlag);
+        }
 
         LOGGER.debug("debugging from property return: {}", property);
         schemaCodegenPropertyCache.put(ns, property);

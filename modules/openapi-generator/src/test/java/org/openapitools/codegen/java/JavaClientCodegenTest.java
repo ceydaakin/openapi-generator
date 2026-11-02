@@ -5946,4 +5946,23 @@ public class JavaClientCodegenTest {
                 .contains("import org.springframework.beans.factory.annotation.Autowired;")
                 .contains("import org.springframework.stereotype.Component;");
     }
+
+    @Test
+    public void testDefaultToEmptyContainerDoesNotLeakAcrossSharedArraySchema_issue25522() {
+        Path output = newTempFolder();
+        CodegenConfigurator configurator = new CodegenConfigurator()
+                .setGeneratorName(JAVA_GENERATOR)
+                .setLibrary(JavaClientCodegen.RESTTEMPLATE)
+                .addAdditionalProperty(CodegenConstants.DEFAULT_TO_EMPTY_CONTAINER, "array")
+                .setInputSpec("src/test/resources/3_0/java/issue_25522.yaml")
+                .setOutputDir(output.toString().replace("\\", "/"));
+
+        new DefaultGenerator().opts(configurator.toClientOptInput()).generate();
+
+        for (String model : List.of("RequiredFirst", "OptionalFirst")) {
+            assertThat(output.resolve("src/main/java/org/openapitools/client/model/" + model + ".java")).content()
+                    .contains("private List<String> requiredStrings = new ArrayList<>();")
+                    .contains("private List<String> optionalStrings;");
+        }
+    }
 }
