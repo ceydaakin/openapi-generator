@@ -471,6 +471,35 @@ public class DartDioClientCodegenTest {
         TestUtils.assertFileNotContains(output.toPath().resolve("lib/src/model/pet.dart"), "Optional<");
     }
 
+    /**
+     * Path parameters must be percent-encoded (OpenAPI "simple" style), otherwise a value
+     * such as "https://qr.code/a" adds path segments and the request hits the wrong URL.
+     * See https://github.com/OpenAPITools/openapi-generator/issues/25527
+     */
+    @Test(dataProvider = "serializationLibraries")
+    public void testPathParametersAreUriEncoded(String serializationLibrary) throws IOException {
+        File output = Files.createTempDirectory("test").toFile();
+        output.deleteOnExit();
+
+        final CodegenConfigurator configurator = new CodegenConfigurator()
+                .setGeneratorName("dart-dio")
+                .setInputSpec("src/test/resources/3_0/petstore.yaml")
+                .setOutputDir(output.getAbsolutePath().replace("\\", "/"));
+        configurator.addAdditionalProperty(CodegenConstants.SERIALIZATION_LIBRARY, serializationLibrary);
+
+        ClientOptInput opts = configurator.toClientOptInput();
+        Generator generator = new DefaultGenerator().opts(opts);
+        List<File> files = generator.generate();
+        files.forEach(File::deleteOnExit);
+
+        Path userApi = output.toPath().resolve("lib/src/api/user_api.dart");
+        String username = DartDioClientCodegen.SERIALIZATION_LIBRARY_BUILT_VALUE.equals(serializationLibrary)
+                ? "encodeQueryParameter(_serializers, username, const FullType(String))"
+                : "username";
+        TestUtils.assertFileContains(userApi,
+                "final _path = r'/user/{username}'.replaceAll('{' r'username' '}', Uri.encodeComponent(" + username + ".toString()));");
+    }
+
     private Path generateFormParamsClient(String serializationLibrary) throws IOException {
         File output = Files.createTempDirectory("test").toFile();
         output.deleteOnExit();
