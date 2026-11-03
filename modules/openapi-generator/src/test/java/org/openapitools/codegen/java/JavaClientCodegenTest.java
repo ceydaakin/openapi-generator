@@ -5441,6 +5441,39 @@ public class JavaClientCodegenTest {
                 .fileContains("@org.jspecify.annotations.NullMarked");
     }
 
+    @DataProvider(name = "jspecifyModelLibraries")
+    public Object[][] jspecifyModelLibraries() {
+        return new Object[][]{{RESTCLIENT}, {WEBCLIENT}, {RESTTEMPLATE}, {NATIVE}, {MICROPROFILE}};
+    }
+
+    @Test(dataProvider = "jspecifyModelLibraries")
+    public void testJspecifyNullableEqualsAndAdditionalProperties(String library) {
+        final Map<String, File> files = generateFromContract("src/test/resources/3_0/java/jspecify-additional-properties.yaml",
+                library, Map.of(USE_JSPECIFY, true, JavaClientCodegen.OPENAPI_NULLABLE, false));
+
+        JavaFileAssert.assertThat(files.get("TestModel.java"))
+                .fileContains(
+                        "import org.jspecify.annotations.Nullable;",
+                        "boolean equals(@Nullable Object o)",
+                        "String toIndentedString(@Nullable Object o)",
+                        "private @Nullable Map<String, Object> additionalProperties;",
+                        "public @Nullable Map<String, Object> getAdditionalProperties()",
+                        "public @Nullable Object getAdditionalProperty(String key)");
+    }
+
+    @Test(dataProvider = "jspecifyModelLibraries")
+    public void testNoJspecifyNullableOnEqualsByDefault(String library) {
+        final Map<String, File> files = generateFromContract("src/test/resources/3_0/java/jspecify-additional-properties.yaml",
+                library, Map.of(JavaClientCodegen.OPENAPI_NULLABLE, false));
+
+        JavaFileAssert.assertThat(files.get("TestModel.java"))
+                .fileContains(
+                        "boolean equals(Object o)",
+                        "String toIndentedString(Object o)",
+                        "private Map<String, Object> additionalProperties;",
+                        "public Object getAdditionalProperty(String key)");
+    }
+
     @Test(dataProvider = "jspecifyLibraries")
     public void testJspecify_openapiNullable(String library, int springBootVersion, boolean hasJspecifyDependency) throws IOException {
         final Map<String, File> files = generateFromContract("src/test/resources/3_0/java/jspecify.yaml", library,
