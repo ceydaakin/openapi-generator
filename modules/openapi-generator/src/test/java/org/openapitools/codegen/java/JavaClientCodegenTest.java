@@ -3600,6 +3600,27 @@ public class JavaClientCodegenTest {
     }
 
     @Test(dataProvider = "serializationLibraries")
+    void addAndPutItemUseInstantiationTypes(String library) {
+        final Map<String, File> files = generateFromContract("src/test/resources/bugs/issue_25642.yaml", library,
+                new HashMap<>(), configurator -> configurator
+                        .addInstantiationType("map", "LinkedHashMap")
+                        .addInstantiationType("array", "LinkedList")
+                        .addInstantiationType("set", "TreeSet")
+                        .addImportMapping("LinkedHashMap", "java.util.LinkedHashMap")
+                        .addImportMapping("LinkedList", "java.util.LinkedList")
+                        .addImportMapping("TreeSet", "java.util.TreeSet"));
+
+        validateJavaSourceFiles(List.copyOf(files.values()));
+        assertThat(files.get("Basket.java").toPath()).content()
+                .contains("this.entries = new LinkedHashMap<>();",
+                        "this.tags = new LinkedList<>();",
+                        "this.labels = new TreeSet<>();")
+                .doesNotContain("this.entries = new HashMap<>();",
+                        "this.tags = new ArrayList<>();",
+                        "this.labels = new LinkedHashSet<>();");
+    }
+
+    @Test(dataProvider = "serializationLibraries")
     void setsDefaultSerializationLibrary(String library) {
         var codegen = new JavaClientCodegen();
         codegen.setLibrary(library);

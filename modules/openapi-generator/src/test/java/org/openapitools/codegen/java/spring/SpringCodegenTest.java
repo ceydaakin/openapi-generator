@@ -128,6 +128,29 @@ public class SpringCodegenTest {
     }
 
     @Test
+    public void testAddAndPutItemUseInstantiationTypes() throws IOException {
+        Map<String, File> files = generateFromContract("src/test/resources/bugs/issue_25642.yaml", SPRING_BOOT,
+                Map.of(), configurator -> configurator
+                        .addTypeMapping("map", "SequencedMap")
+                        .addTypeMapping("array", "Deque")
+                        .addInstantiationType("map", "LinkedHashMap")
+                        .addInstantiationType("array", "ArrayDeque")
+                        .addInstantiationType("set", "TreeSet")
+                        .addImportMapping("SequencedMap", "java.util.SequencedMap")
+                        .addImportMapping("LinkedHashMap", "java.util.LinkedHashMap")
+                        .addImportMapping("Deque", "java.util.Deque")
+                        .addImportMapping("ArrayDeque", "java.util.ArrayDeque")
+                        .addImportMapping("TreeSet", "java.util.TreeSet"));
+
+        validateJavaSourceFiles(List.copyOf(files.values()));
+        assertThat(files.get("Basket.java").toPath()).content()
+                .contains("this.entries = new LinkedHashMap<>();",
+                        "this.tags = new ArrayDeque<>();",
+                        "this.labels = new TreeSet<>();")
+                .doesNotContain("new HashMap<>()", "new ArrayList<>()", "new LinkedHashSet<>()");
+    }
+
+    @Test
     public void doAnnotateDatesOnModelParameters() throws IOException {
         File output = Files.createTempDirectory("test").toFile().getCanonicalFile();
         output.deleteOnExit();

@@ -2111,6 +2111,12 @@ public abstract class AbstractJavaCodegen extends DefaultCodegen implements Code
             model.imports.add("HashMap");
         }
 
+        // empty container created by the add<Name>Item/put<Name>Item helpers in pojo templates
+        String instantiationType = property.containerType == null ? null : instantiationTypes().get(property.containerType);
+        if (instantiationType != null) {
+            property.vendorExtensions.put("x-java-instantiation-type", instantiationType);
+        }
+
         if (!BooleanUtils.toBoolean(model.isEnum)) {
             // needed by all pojos, but not enums
             if (!AnnotationLibrary.SWAGGER2.equals(getAnnotationLibrary())) {
