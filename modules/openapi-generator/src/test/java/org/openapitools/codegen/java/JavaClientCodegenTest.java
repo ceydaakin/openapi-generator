@@ -4395,6 +4395,37 @@ public class JavaClientCodegenTest {
     }
 
     @Test
+    public void testUseSingleRequestParameterAvoidsModelNameCollision_issue_25646() {
+        for (String library : List.of(JavaClientCodegen.WEBCLIENT, JavaClientCodegen.RESTCLIENT)) {
+            for (String mode : List.of("true", "static")) {
+                final Path output = newTempFolder();
+                final CodegenConfigurator configurator = new CodegenConfigurator()
+                        .setGeneratorName(JAVA_GENERATOR)
+                        .setLibrary(library)
+                        .setAdditionalProperties(Map.of(
+                                CodegenConstants.API_PACKAGE, "xyz.abcdef.api",
+                                CodegenConstants.USE_SINGLE_REQUEST_PARAMETER, mode
+                        ))
+                        .setInputSpec("src/test/resources/3_0/java/issue_25646.yaml")
+                        .setOutputDir(output.toString().replace("\\", "/"));
+
+                new DefaultGenerator().opts(configurator.toClientOptInput()).generate();
+
+                Path api = output.resolve("src/main/java/xyz/abcdef/api/DefaultApi.java");
+                // the model UpdateFooRequest must not be shadowed by the nested request class
+                assertFileContains(api,
+                        "UpdateFooRequestParams requestParameters",
+                        "UpdateFooRequest updateFooRequest)",
+                        "DeleteFooRequest requestParameters");
+                TestUtils.assertFileNotContains(api,
+                        "class UpdateFooRequest ",
+                        "record UpdateFooRequest(",
+                        "UpdateFooRequest requestParameters");
+            }
+        }
+    }
+
+    @Test
     public void testGenerateParameterId() {
         final Path output = newTempFolder();
         final CodegenConfigurator configurator = new CodegenConfigurator()

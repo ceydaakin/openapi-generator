@@ -946,6 +946,40 @@ public class JavaClientCodegen extends AbstractJavaCodegen
         }
     }
 
+    /**
+     * Sets {@code x-single-request-class-name} on each operation: the name of the nested class
+     * that groups its parameters ({@code <OperationId>Request}). If a model already has that name,
+     * the nested class would shadow it inside the API class, so a "Params" suffix is added (#25646).
+     */
+    private void setSingleRequestClassNames(OperationsMap objs, List<ModelMap> allModels) {
+        OperationMap operations = objs.getOperations();
+        if (operations == null) {
+            return;
+        }
+        Set<String> modelNames = new HashSet<>();
+        for (ModelMap modelMap : allModels) {
+            modelNames.add(modelMap.getModel().classname);
+        }
+        for (CodegenOperation operation : operations.getOperation()) {
+            String name = StringUtils.capitalize(operation.operationId) + "Request";
+            if (modelNames.contains(name)) {
+                String base = name + "Params";
+                name = base;
+                for (int i = 1; modelNames.contains(name); i++) {
+                    name = base + i;
+                }
+            }
+            operation.vendorExtensions.put("x-single-request-class-name", name);
+            // The setters are rendered inside {{#allParams}}, where "vendorExtensions" resolves to the
+            // parameter's map, so the name is set there too. Copy the map first: it may be shared
+            // with a model property or with the same parameter in another operation.
+            for (CodegenParameter param : operation.allParams) {
+                param.vendorExtensions = new HashMap<>(param.vendorExtensions);
+                param.vendorExtensions.put("x-single-request-class-name", name);
+            }
+        }
+    }
+
     @Override
     public OperationsMap postProcessOperationsWithModels(OperationsMap objs, List<ModelMap> allModels) {
         super.postProcessOperationsWithModels(objs, allModels);
@@ -961,6 +995,10 @@ public class JavaClientCodegen extends AbstractJavaCodegen
                     }
                 }
             }
+        }
+
+        if (this.getSingleRequestParameter() && (isLibrary(WEBCLIENT) || isLibrary(RESTCLIENT))) {
+            setSingleRequestClassNames(objs, allModels);
         }
 
         if (isLibrary(RETROFIT_2)) {
