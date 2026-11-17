@@ -473,6 +473,27 @@ will name the API method as `returnPetById` instead of `getPetById` obtained fro
 
 :warning: **NOTE: these mapping options do not perform any validation/change on the input and therefore output (e.g. auto-generated SDK) may not work (e.g. input is a reserved keyword in a particular programming language causing compilation errors). As usual, please test the output to ensure it's working as expected.**
 
+## Inject Model Vendor Extensions
+
+To add vendor extensions to models or model properties without editing the OpenAPI spec, use the `injectModelVendorExtensions` option (available since v7.25.0). Keys use one of these formats:
+
+- `ModelName.x-extension-name=value` injects the extension into the model (class level).
+- `ModelName.propertyBaseName.x-extension-name=value` injects it into a property. `propertyBaseName` is the property name as written in the spec.
+
+An injected extension overrides one with the same name in the spec. It only has an effect when the generator's templates use that extension. For example, the `spring` generator reads `x-class-extra-annotation` and `x-field-extra-annotation`:
+
+```sh
+java -jar modules/openapi-generator-cli/target/openapi-generator-cli.jar generate -g spring -i modules/openapi-generator/src/test/resources/3_0/petstore.yaml -o /tmp/spring/ --inject-model-vendor-extensions Pet.x-class-extra-annotation=@com.example.Audited,Pet.name.x-field-extra-annotation=@com.example.Sensitive
+```
+
+The same in a configuration file (`-c config.yaml`):
+
+```yaml
+injectModelVendorExtensions:
+  Pet.x-class-extra-annotation: "@com.example.Audited"
+  Pet.name.x-field-extra-annotation: "@com.example.Sensitive"
+```
+
 ## Schema Mapping
 
 One can map the schema to something else (e.g. external objects/models outside of the package) using the `schemaMappings` option, e.g. in CLI
